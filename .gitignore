@@ -1,0 +1,9 @@
+node_modules/
+dist/
+*.tsbuildinfo
+*.csv
+participants*.json
+raffle-result*.json
+private-data/
+.env
+.env.*
