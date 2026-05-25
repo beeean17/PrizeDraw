@@ -12,7 +12,7 @@ export const STUDENT_ID_REGEX = /^\d{6,12}$/;
 
 export const DEFAULT_PRIZES: PrizeConfig[] = [
   { rank: '3등', name: '생협 아메리카노', count: 30, revealOrder: 1 },
-  { rank: '2등', name: '선풍기', count: 1, revealOrder: 2 },
+  { rank: '2등', name: '팬리스 선풍기', count: 1, revealOrder: 2 },
   { rank: '1등', name: '스탠바이미', count: 1, revealOrder: 3 },
 ];
 
