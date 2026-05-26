@@ -326,45 +326,6 @@ function ArcadeCabinetPanel({
   );
 }
 
-function ArcadeHotspots({
-  primary,
-  secondary,
-  tertiary,
-}: {
-  primary: CabinetAction;
-  secondary: CabinetAction;
-  tertiary: CabinetAction;
-}) {
-  return (
-    <div className="arcade-hotspots" aria-label="아케이드 버튼">
-      <button
-        type="button"
-        className="hotspot hot-primary"
-        onClick={primary.onClick}
-        disabled={primary.disabled}
-        title={primary.label}
-        aria-label={primary.label}
-      />
-      <button
-        type="button"
-        className="hotspot hot-secondary"
-        onClick={secondary.onClick}
-        disabled={secondary.disabled}
-        title={secondary.label}
-        aria-label={secondary.label}
-      />
-      <button
-        type="button"
-        className="hotspot hot-tertiary"
-        onClick={tertiary.onClick}
-        disabled={tertiary.disabled}
-        title={tertiary.label}
-        aria-label={tertiary.label}
-      />
-    </div>
-  );
-}
-
 export default function App() {
   const [view, setView] = useState<AppView>('START');
   const [eventName, setEventName] = useState('ST:talk 경품 추첨');
@@ -499,12 +460,15 @@ export default function App() {
   return (
     <main className="app-shell">
       <PixelStars />
-      <div className="cabinet">
-        <img
-          className="cabinet-frame"
-          src={`${import.meta.env.BASE_URL}arcade-cabinet.png`}
-          alt="아케이드 게임기 프레임"
-        />
+      <div className="cabinet relative overflow-hidden">
+        <div className="cabinet-shell" aria-hidden="true">
+          <span className="cabinet-rail rail-left" />
+          <span className="cabinet-rail rail-right" />
+          <span className="cabinet-top-lip" />
+          <span className="screen-shelf" />
+          <span className="cabinet-lower-face" />
+          <span className="cabinet-floor-shadow" />
+        </div>
         <div className="marquee">
           <span className="m-glyph">◆</span>
           <h1 className="m-title">
@@ -539,7 +503,7 @@ export default function App() {
           {view === 'START' ? (
             <div className="hero">
               <div className="hero-copy">
-                <div className="hud-strip">
+                <div className="hud-strip center">
                   <span className="hud-chip">STAGE 1-1</span>
                   <span className="hud-chip alt">MODE · DRAW</span>
                   <span className="hud-chip outline">PRIZES · {totalPrizeCount}</span>
@@ -548,26 +512,19 @@ export default function App() {
                   <span className="t-line t-en">St:talk</span>
                   <span className="t-line t-kr">경품 추첨</span>
                 </h2>
-                <p>
-                  CSV 또는 텍스트로 참가자를 입력하면 SHA-256 seed 기반 재현 가능한 방식으로
-                  1등·2등·3등을 차례로 공개합니다.
-                </p>
+                <div className="title-meter" aria-label="추첨 정보">
+                  <span>PLAYERS {validation.validCount}</span>
+                  <span>PRIZE TARGETS {totalPrizeCount}</span>
+                  <span>SHA-256 READY</span>
+                </div>
                 <div className="game-prompt">
                   <span className="gp-arrow">▶</span>
                   <span>PRESS PINK BUTTON TO START</span>
                 </div>
-                <div className="actions">
-                  <button className="primary press" type="button" onClick={() => setView('INPUT')}>
-                    ▶ START
-                  </button>
-                  <button type="button" onClick={toggleFullscreen}>
-                    ▣ FULLSCREEN
-                  </button>
-                </div>
               </div>
               <div className="prize-stack" aria-hidden="true">
                 <div className="prize-stack-title">
-                  <span className="psg">◆</span> TODAY&apos;S PRIZES <span className="psg">◆</span>
+                  <span className="psg">◆</span> SELECT TARGET PRIZE <span className="psg">◆</span>
                 </div>
                 <div className="prize-card prize-1">
                   <span className="prize-no">PRIZE #01</span>
@@ -768,53 +725,91 @@ export default function App() {
           ) : null}
 
           {view === 'RESULT' && drawResult ? (
-            <div className="leaderboard">
-              <div className="lb-head">
-                <div className="lb-status">
-                  <span className="lb-status-dot" />
+            <div className="grid grid-rows-[auto_1fr_auto] gap-[18px] h-full min-h-0 overflow-hidden">
+              {/* head */}
+              <div className="grid grid-cols-[auto_1fr_auto] items-center gap-[18px] pb-2.5 border-b-[3px] border-dashed border-pink">
+                <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-[rgba(255,80,80,0.12)] text-arcade-red font-pixel-en text-[0.7rem] tracking-[0.2em] [box-shadow:0_0_0_2px_rgba(255,120,120,0.55)]">
+                  <span className="w-2 h-2 bg-arcade-red-soft shadow-[0_0_8px_#ff7d8a] animate-blink-fast" />
                   GAME OVER
                 </div>
-                <h2 className="lb-title">FINAL LEADERBOARD</h2>
-                <span className="lb-event">{drawResult.eventName}</span>
+                <h2 className="justify-self-center font-pixel-en text-[1.7rem] tracking-[0.08em] text-pink [text-shadow:3px_0_0_var(--color-blue-deep),-3px_0_0_var(--color-blue-deep),0_3px_0_var(--color-blue-deep),0_-3px_0_var(--color-blue-deep),0_0_18px_rgba(236,115,166,0.5)]">
+                  FINAL LEADERBOARD
+                </h2>
+                <span className="justify-self-end text-blue-sky font-pixel-kr text-[0.95rem] tracking-[0.06em]">
+                  {drawResult.eventName}
+                </span>
               </div>
 
-              <div className="lb-board">
-                <div className="lb-cols">
-                  <div className="lb-c-rank">RANK</div>
-                  <div className="lb-c-id">WINNER ID</div>
-                  <div className="lb-c-prize">PRIZE / SCORE</div>
+              {/* board */}
+              <div className="grid grid-rows-[auto_1fr] min-h-0 overflow-hidden px-[18px] pt-[18px] pb-2 bg-black/45 backdrop-blur-[2px] [box-shadow:0_0_0_2px_rgba(54,72,154,0.6),inset_0_0_30px_rgba(54,72,154,0.18)]">
+                <div className="grid grid-cols-[80px_1fr_1.1fr] gap-4 pb-3 border-b-2 border-[rgba(107,146,203,0.35)] font-pixel-en text-[0.72rem] text-blue-sky tracking-[0.18em]">
+                  <div className="text-center">RANK</div>
+                  <div className="text-left">WINNER ID</div>
+                  <div className="text-right">PRIZE / SCORE</div>
                 </div>
-                <div className="lb-rows custom-scrollbar">
+                <div className="lb-scroll min-h-0 h-full overflow-y-auto pr-1">
                   {(['1등', '2등', '3등'] as Rank[]).flatMap((rank) =>
                     drawResult.winners[rank].map((winner, idx) => {
                       const tier =
-                        rank === '1등'
-                          ? 'r1'
-                          : rank === '2등'
-                            ? 'r2'
-                            : 'r3';
+                        rank === '1등' ? 'r1' : rank === '2등' ? 'r2' : 'r3';
                       const rankNum =
                         rank === '1등' ? '01' : rank === '2등' ? '02' : String(idx + 3).padStart(2, '0');
                       const tierLabel =
-                        rank === '1등'
-                          ? 'GOLD RANK'
-                          : rank === '2등'
-                            ? 'SILVER RANK'
-                            : 'BRONZE RANK';
+                        rank === '1등' ? 'GOLD RANK' : rank === '2등' ? 'SILVER RANK' : 'BRONZE RANK';
+
+                      const rowBase =
+                        'lb-anim grid grid-cols-[80px_1fr_1.1fr] items-center gap-4 px-1 border-b border-white/5 transition-colors duration-150 hover:bg-white/5';
+                      const rowTier =
+                        tier === 'r1'
+                          ? 'py-[22px] bg-[linear-gradient(90deg,rgba(236,115,166,0.18),transparent_70%)] !border-b-2 !border-b-[rgba(236,115,166,0.6)]'
+                          : tier === 'r2'
+                            ? 'py-[18px] bg-[linear-gradient(90deg,rgba(107,146,203,0.18),transparent_70%)]'
+                            : 'py-[14px]';
+
+                      const rankCls =
+                        tier === 'r1'
+                          ? 'font-pixel-en tracking-[0.02em] text-[2.4rem] text-pink [text-shadow:0_0_16px_var(--color-pink)]'
+                          : tier === 'r2'
+                            ? 'font-pixel-en tracking-[0.02em] text-[1.85rem] text-blue-sky'
+                            : 'font-pixel-en tracking-[0.02em] text-[1.4rem] text-arcade-text';
+
+                      const winnerCls =
+                        tier === 'r1'
+                          ? 'font-pixel-mono tracking-[0.04em] text-[2rem] text-arcade-yellow [text-shadow:0_0_14px_rgba(244,211,94,0.55)]'
+                          : tier === 'r2'
+                            ? 'font-pixel-mono tracking-[0.04em] text-[1.7rem] text-arcade-text'
+                            : 'font-pixel-mono tracking-[0.04em] text-[1.35rem] text-arcade-text';
+
+                      const prizeNameCls =
+                        tier === 'r1'
+                          ? 'font-pixel-kr tracking-[-0.01em] text-[1.4rem] text-pink'
+                          : tier === 'r2'
+                            ? 'font-pixel-kr tracking-[-0.01em] text-[1.35rem] text-pink'
+                            : 'font-pixel-kr tracking-[-0.01em] text-[1.16rem] text-pink';
+
+                      const prizeSubCls =
+                        tier === 'r1'
+                          ? 'font-pixel-en text-[0.6rem] tracking-[0.18em] text-arcade-yellow [text-shadow:2px_2px_0_var(--color-blue-darker)]'
+                          : tier === 'r2'
+                            ? 'font-pixel-en text-[0.66rem] tracking-[0.08em] text-blue-sky [text-shadow:2px_2px_0_var(--color-blue-darker)]'
+                            : 'block font-pixel-en text-[0.6rem] tracking-[0.18em] text-[#c9824c] [text-shadow:2px_2px_0_#5a3425]';
+
                       return (
-                        <div className={`lb-row ${tier}`} key={`${rank}-${winner.normalizedId}`}>
-                          <div className="lb-rank-cell">
-                            <span className="lb-rank">{rankNum}</span>
+                        <div className={`${rowBase} ${rowTier}`} key={`${rank}-${winner.normalizedId}`}>
+                          <div className="grid place-items-center">
+                            <span className={rankCls}>{rankNum}</span>
                           </div>
-                          <div className="lb-id-cell">
-                            <span className="lb-winner">{winner.maskedId}</span>
+                          <div className="flex items-center gap-3 min-w-0">
+                            <span className={winnerCls}>{winner.maskedId}</span>
                             {rank === '1등' ? (
-                              <span className="lb-tag flash">NEW HI-SCORE</span>
+                              <span className="px-2 py-[3px] bg-pink text-arcade-ink font-pixel-en text-[0.55rem] font-bold tracking-[0.08em] [box-shadow:0_0_0_2px_var(--color-arcade-bg),0_0_12px_var(--color-pink)] animate-blink-tag">
+                                NEW HI-SCORE
+                              </span>
                             ) : null}
                           </div>
-                          <div className="lb-prize-cell">
-                            <span className="lb-prize-name">{prizeByRank[rank].name}</span>
-                            <span className="lb-prize-sub">{tierLabel}</span>
+                          <div className="flex flex-col gap-1 min-w-0 text-right">
+                            <span className={prizeNameCls}>{prizeByRank[rank].name}</span>
+                            <span className={prizeSubCls}>{tierLabel}</span>
                           </div>
                         </div>
                       );
@@ -823,10 +818,11 @@ export default function App() {
                 </div>
               </div>
 
-              <div className="lb-footer">
-                <div className="lb-meta">
+              {/* footer */}
+              <div className="flex items-center justify-between gap-4 pt-3.5 border-t-[3px] border-dashed border-pink">
+                <div className="flex items-center gap-2.5 text-blue-pale font-pixel-en text-[0.7rem] tracking-[0.15em]">
                   <span>PLAYERS {drawResult.participantCount}</span>
-                  <span className="lb-dot-sep">·</span>
+                  <span className="text-pink">·</span>
                   <span>GENERATED {new Date(drawResult.generatedAt).toLocaleString('ko-KR')}</span>
                 </div>
                 <DownloadButtons result={drawResult} />
@@ -849,7 +845,7 @@ export default function App() {
           <div className="brick-strip" aria-hidden="true" />
         </section>
       </div>
-      <ArcadeHotspots
+      <ArcadeCabinetPanel
         primary={primaryAction}
         secondary={secondaryAction}
         tertiary={tertiaryAction}
