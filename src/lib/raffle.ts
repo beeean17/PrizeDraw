@@ -217,8 +217,8 @@ export async function drawWinners(
   };
 }
 
-export function makeSampleData(count = 120): string {
-  return Array.from({ length: count }, (_, index) => String(202600001 + index)).join('\n');
+export function makeSampleData(): string {
+  return Array.from({ length: 90 }, (_, index) => String((10 + index) * 1_000_000)).join('\n');
 }
 
 function publicResult(result: DrawResult) {
@@ -229,9 +229,9 @@ function publicResult(result: DrawResult) {
     seed: result.seed,
     algorithm: result.algorithm,
     winners: {
-      '1등': result.winners['1등'].map((winner) => winner.maskedId),
-      '2등': result.winners['2등'].map((winner) => winner.maskedId),
-      '3등': result.winners['3등'].map((winner) => winner.maskedId),
+      '1등': result.winners['1등'].map((winner) => winner.normalizedId),
+      '2등': result.winners['2등'].map((winner) => winner.normalizedId),
+      '3등': result.winners['3등'].map((winner) => winner.normalizedId),
     },
     generatedAt: result.generatedAt,
     appVersion: result.appVersion,
@@ -243,12 +243,12 @@ export function resultToJson(result: DrawResult): string {
 }
 
 export function resultToCsv(result: DrawResult): string {
-  const lines = ['rank,masked_student_id'];
+  const lines = ['rank,student_id'];
   const ranks: Rank[] = ['1등', '2등', '3등'];
 
   for (const rank of ranks) {
     for (const winner of result.winners[rank]) {
-      lines.push(`${rank},${winner.maskedId}`);
+      lines.push(`${rank},${winner.normalizedId}`);
     }
   }
 

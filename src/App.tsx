@@ -1,4 +1,4 @@
-import { ChangeEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { ChangeEvent, useEffect, useMemo, useState } from 'react';
 import {
   DEFAULT_PRIZES,
   downloadTextFile,
@@ -17,6 +17,7 @@ type AppView = 'START' | 'INPUT' | 'READY' | 'DRAW' | 'RESULT';
 type DrawPhase = 'idle' | 'drawing' | 'revealed';
 
 const rankOrder: Rank[] = ['3등', '2등', '1등'];
+const startPrizeOrder: Rank[] = ['1등', '2등', '3등'];
 const prizeByRank = Object.fromEntries(
   DEFAULT_PRIZES.map((prize) => [prize.rank, prize]),
 ) as Record<Rank, (typeof DEFAULT_PRIZES)[number]>;
@@ -169,7 +170,7 @@ function ConfettiBurst({ active }: { active: boolean }) {
 }
 
 function LoadingRunner() {
-  const [hasSpriteSheet, setHasSpriteSheet] = useState(false);
+  const [hasRunnerImage, setHasRunnerImage] = useState(false);
 
   return (
     <div className="loading-runner" role="img" aria-label="추첨 로딩 중">
@@ -178,15 +179,15 @@ function LoadingRunner() {
         <span className="runner-tick t2" />
         <span className="runner-tick t3" />
         <span className="runner-fill" />
-        <span className={`runner-sprite ${hasSpriteSheet ? 'has-sheet' : ''}`}>
+        <span className={`runner-sprite ${hasRunnerImage ? 'has-image' : ''}`}>
           <img
-            className="runner-sheet-probe"
-            src={`${import.meta.env.BASE_URL}runner-sprite-sheet.png`}
+            className="runner-sheet"
+            src={`${import.meta.env.BASE_URL}runner-character.png`}
             alt=""
-            onLoad={() => setHasSpriteSheet(true)}
-            onError={() => setHasSpriteSheet(false)}
+            onLoad={() => setHasRunnerImage(true)}
+            onError={() => setHasRunnerImage(false)}
+            aria-hidden="true"
           />
-          <span className="runner-sheet" aria-hidden="true" />
           <span className="runner-head" />
           <span className="runner-body" />
           <span className="runner-arm left" />
@@ -220,111 +221,6 @@ function Hearts({ count = 3 }: { count?: number }) {
 }
 
 type CabinetAction = { label: string; onClick: () => void; disabled?: boolean };
-
-function ArcadeCabinetPanel({
-  primary,
-  secondary,
-  tertiary,
-}: {
-  primary: CabinetAction;
-  secondary: CabinetAction;
-  tertiary: CabinetAction;
-}) {
-  const joyRef = useRef<HTMLDivElement>(null);
-  const stickRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const baseTransform = 'translateX(-50%)';
-    function onMove(e: MouseEvent) {
-      const container = joyRef.current;
-      const stick = stickRef.current;
-      if (!container || !stick) return;
-      const rect = container.getBoundingClientRect();
-      const cx = rect.left + rect.width / 2;
-      const cy = rect.top + rect.height / 2;
-      const dx = e.clientX - cx;
-      const dy = e.clientY - cy;
-      const dist = Math.hypot(dx, dy);
-      if (dist < 520) {
-        // tilt the whole stick (shaft + ball move together as one rigid body)
-        const angle = Math.atan2(dy, dx);
-        const tiltDeg = Math.cos(angle) * 16; // left/right tilt only, capped
-        stick.style.transform = `${baseTransform} rotate(${tiltDeg}deg)`;
-      } else {
-        stick.style.transform = baseTransform;
-      }
-    }
-    window.addEventListener('mousemove', onMove);
-    return () => window.removeEventListener('mousemove', onMove);
-  }, []);
-
-  return (
-    <div className="control-panel">
-      <div className="control-panel-inner">
-        <div className="cp-cell">
-          <div className="joystick-3d" ref={joyRef}>
-            <div className="j-base" />
-            <div className="j-stick" ref={stickRef}>
-              <div className="j-shaft" />
-              <div className="j-ball" />
-            </div>
-          </div>
-          <span className="cp-label">MOVE</span>
-        </div>
-
-        <div className="btn-group">
-          <div className="cp-cell">
-            <button
-              type="button"
-              className="ab3d pink"
-              onClick={primary.onClick}
-              disabled={primary.disabled}
-              title={primary.label}
-            >
-              <div className="ab3d-cap" />
-            </button>
-            <span className="cp-label">{primary.label}</span>
-          </div>
-          <div className="cp-cell">
-            <button
-              type="button"
-              className="ab3d yellow"
-              onClick={secondary.onClick}
-              disabled={secondary.disabled}
-              title={secondary.label}
-            >
-              <div className="ab3d-cap" />
-            </button>
-            <span className="cp-label">{secondary.label}</span>
-          </div>
-          <div className="cp-cell">
-            <button
-              type="button"
-              className="ab3d blue"
-              onClick={tertiary.onClick}
-              disabled={tertiary.disabled}
-              title={tertiary.label}
-            >
-              <div className="ab3d-cap" />
-            </button>
-            <span className="cp-label">{tertiary.label}</span>
-          </div>
-        </div>
-
-        <div className="cp-coin">
-          <div className="coin-slot" />
-          <span className="cp-label">INSERT COIN</span>
-        </div>
-      </div>
-      <div className="cabinet-base" aria-hidden="true">
-        <div className="base-door">
-          <span className="base-door-slot" />
-          <span className="base-door-label">PRIZE DRAW</span>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 export default function App() {
   const [view, setView] = useState<AppView>('START');
@@ -442,44 +338,25 @@ export default function App() {
   })();
 
   const secondaryAction: CabinetAction = {
-    label: 'FULL',
+    label: 'INSERT COIN',
     onClick: toggleFullscreen,
   };
 
   const tertiaryAction: CabinetAction = {
-    label: view === 'START' ? 'INFO' : 'RESET',
-    onClick: () => {
-      if (view === 'START') {
-        window.alert('Cand:ID × ST:talk Prize Draw\nSHA-256 seed 기반 재현 가능 추첨');
-        return;
-      }
-      resetAll();
-    },
+    label: 'RESET',
+    onClick: resetAll,
   };
 
   return (
     <main className="app-shell">
       <PixelStars />
-      <div className="cabinet relative overflow-hidden">
-        <div className="cabinet-shell" aria-hidden="true">
-          <span className="cabinet-rail rail-left" />
-          <span className="cabinet-rail rail-right" />
-          <span className="cabinet-top-lip" />
-          <span className="screen-shelf" />
-          <span className="cabinet-lower-face" />
-          <span className="cabinet-floor-shadow" />
-        </div>
-        <div className="marquee">
-          <span className="m-glyph">◆</span>
-          <h1 className="m-title">
-            <span className="m-cand">Cand<i>:</i>ID</span>
-            <span className="m-sep">×</span>
-            <span className="m-sub">ST:talk Prize Draw</span>
-          </h1>
-          <span className="m-glyph">◆</span>
-        </div>
+      <div className="cabinet">
+        <img
+          className="cabinet-frame"
+          src={`${import.meta.env.BASE_URL}arcade-cabinet.png`}
+          alt="Cand:ID ST:talk Prize Draw arcade cabinet"
+        />
         <div className="arcade-bezel">
-          <div className="bezel-glow" aria-hidden="true" />
           <section className={`broadcast-frame view-${view.toLowerCase()}`}>
         <div className="scanlines-soft" aria-hidden="true" />
         <header className="topbar">
@@ -519,65 +396,33 @@ export default function App() {
                 </div>
                 <div className="game-prompt">
                   <span className="gp-arrow">▶</span>
-                  <span>PRESS PINK BUTTON TO START</span>
+                  <span>PRESS START BUTTON</span>
                 </div>
               </div>
               <div className="prize-stack" aria-hidden="true">
                 <div className="prize-stack-title">
                   <span className="psg">◆</span> SELECT TARGET PRIZE <span className="psg">◆</span>
                 </div>
-                <div className="prize-card prize-1">
-                  <span className="prize-no">PRIZE #01</span>
-                  <span className="badge">1등</span>
-                  <span className="body">
-                    <strong>스탠바이미</strong>
-                    <em>×1</em>
-                  </span>
-                  <img
-                    className="prize-img"
-                    src={`${import.meta.env.BASE_URL}prize-1.png`}
-                    alt=""
-                    onError={(e) => {
-                      (e.currentTarget as HTMLImageElement).style.visibility = 'hidden';
-                    }}
-                  />
-                </div>
-                <div className="prize-card prize-2">
-                  <span className="prize-no">PRIZE #02</span>
-                  <span className="badge">2등</span>
-                  <span className="body">
-                    <strong>팬리스 선풍기</strong>
-                    <em>×1</em>
-                  </span>
-                  <img
-                    className="prize-img"
-                    src={`${import.meta.env.BASE_URL}prize-2.png`}
-                    alt=""
-                    onError={(e) => {
-                      (e.currentTarget as HTMLImageElement).style.visibility = 'hidden';
-                    }}
-                  />
-                </div>
-                <div className="prize-card prize-3">
-                  <span className="prize-no">PRIZE #03</span>
-                  <span className="badge">3등</span>
-                  <span className="body">
-                    <strong>
-                      생협
-                      <br />
-                      아메리카노
-                    </strong>
-                    <em>×30</em>
-                  </span>
-                  <img
-                    className="prize-img"
-                    src={`${import.meta.env.BASE_URL}prize-3.png`}
-                    alt=""
-                    onError={(e) => {
-                      (e.currentTarget as HTMLImageElement).style.visibility = 'hidden';
-                    }}
-                  />
-                </div>
+                {startPrizeOrder.map((rank, index) => {
+                  const prize = prizeByRank[rank];
+                  const prizeNumber = index + 1;
+
+                  return (
+                    <div className={`prize-card prize-${prizeNumber}`} key={rank}>
+                      <span className="prize-no">PRIZE #{String(prizeNumber).padStart(2, '0')}</span>
+                      <span className="prize-name">{prize.name}</span>
+                      <span className="prize-count">×{prize.count}</span>
+                      <img
+                        className="prize-img"
+                        src={`${import.meta.env.BASE_URL}prize-${prizeNumber}.png`}
+                        alt=""
+                        onError={(e) => {
+                          (e.currentTarget as HTMLImageElement).style.visibility = 'hidden';
+                        }}
+                      />
+                    </div>
+                  );
+                })}
               </div>
             </div>
           ) : null}
@@ -608,7 +453,7 @@ export default function App() {
                     <input accept=".csv,.txt,text/csv,text/plain" type="file" onChange={handleFileChange} />
                   </label>
                   <button type="button" onClick={() => setInputText(makeSampleData())}>
-                    샘플 120명
+                    샘플 10M~99M
                   </button>
                   <button type="button" onClick={() => setInputText('')}>
                     비우기
@@ -622,7 +467,7 @@ export default function App() {
                   id="participant-input"
                   value={inputText}
                   onChange={(event) => setInputText(event.target.value)}
-                  placeholder={'student_id\n202612345\n202612346\n202612347'}
+                  placeholder={'student_id\n10000000\n11000000\n12000000'}
                 />
               </section>
 
@@ -664,7 +509,7 @@ export default function App() {
                 </p>
                 <div className="game-prompt">
                   <span className="gp-arrow">▶</span>
-                  <span>PRESS PINK BUTTON TO DRAW</span>
+                  <span>PRESS START BUTTON TO DRAW</span>
                 </div>
                 <div className="actions">
                   <button className="primary" type="button" onClick={() => revealRank('3등')}>
@@ -728,21 +573,21 @@ export default function App() {
             <div className="grid grid-rows-[auto_1fr_auto] gap-[18px] h-full min-h-0 overflow-hidden">
               {/* head */}
               <div className="grid grid-cols-[auto_1fr_auto] items-center gap-[18px] pb-2.5 border-b-[3px] border-dashed border-pink">
-                <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-[rgba(255,80,80,0.12)] text-arcade-red font-pixel-en text-[0.7rem] tracking-[0.2em] [box-shadow:0_0_0_2px_rgba(255,120,120,0.55)]">
+                <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-[rgba(255,80,80,0.12)] text-arcade-red font-pixel-en text-[0.78rem] tracking-[0.2em] [box-shadow:0_0_0_2px_rgba(255,120,120,0.55)]">
                   <span className="w-2 h-2 bg-arcade-red-soft shadow-[0_0_8px_#ff7d8a] animate-blink-fast" />
                   GAME OVER
                 </div>
-                <h2 className="justify-self-center font-pixel-en text-[1.7rem] tracking-[0.08em] text-pink [text-shadow:3px_0_0_var(--color-blue-deep),-3px_0_0_var(--color-blue-deep),0_3px_0_var(--color-blue-deep),0_-3px_0_var(--color-blue-deep),0_0_18px_rgba(236,115,166,0.5)]">
+                <h2 className="justify-self-center font-pixel-en text-[1.9rem] tracking-[0.08em] text-pink [text-shadow:3px_0_0_var(--color-blue-deep),-3px_0_0_var(--color-blue-deep),0_3px_0_var(--color-blue-deep),0_-3px_0_var(--color-blue-deep),0_0_18px_rgba(236,115,166,0.5)]">
                   FINAL LEADERBOARD
                 </h2>
-                <span className="justify-self-end text-blue-sky font-pixel-kr text-[0.95rem] tracking-[0.06em]">
+                <span className="justify-self-end text-blue-sky font-pixel-kr text-[1.08rem] tracking-[0.06em]">
                   {drawResult.eventName}
                 </span>
               </div>
 
               {/* board */}
               <div className="grid grid-rows-[auto_1fr] min-h-0 overflow-hidden px-[18px] pt-[18px] pb-2 bg-black/45 backdrop-blur-[2px] [box-shadow:0_0_0_2px_rgba(54,72,154,0.6),inset_0_0_30px_rgba(54,72,154,0.18)]">
-                <div className="grid grid-cols-[80px_1fr_1.1fr] gap-4 pb-3 border-b-2 border-[rgba(107,146,203,0.35)] font-pixel-en text-[0.72rem] text-blue-sky tracking-[0.18em]">
+                <div className="grid grid-cols-[80px_1fr_1.1fr] gap-4 pb-3 border-b-2 border-[rgba(107,146,203,0.35)] font-pixel-en text-[0.82rem] text-blue-sky tracking-[0.18em]">
                   <div className="text-center">RANK</div>
                   <div className="text-left">WINNER ID</div>
                   <div className="text-right">PRIZE / SCORE</div>
@@ -768,31 +613,31 @@ export default function App() {
 
                       const rankCls =
                         tier === 'r1'
-                          ? 'font-pixel-en tracking-[0.02em] text-[2.4rem] text-pink [text-shadow:0_0_16px_var(--color-pink)]'
+                          ? 'font-pixel-en tracking-[0.02em] text-[2.65rem] text-pink [text-shadow:0_0_16px_var(--color-pink)]'
                           : tier === 'r2'
-                            ? 'font-pixel-en tracking-[0.02em] text-[1.85rem] text-blue-sky'
-                            : 'font-pixel-en tracking-[0.02em] text-[1.4rem] text-arcade-text';
+                            ? 'font-pixel-en tracking-[0.02em] text-[2.05rem] text-blue-sky'
+                            : 'font-pixel-en tracking-[0.02em] text-[1.55rem] text-arcade-text';
 
                       const winnerCls =
                         tier === 'r1'
-                          ? 'font-pixel-mono tracking-[0.04em] text-[2rem] text-arcade-yellow [text-shadow:0_0_14px_rgba(244,211,94,0.55)]'
+                          ? 'font-pixel-mono tracking-[0.04em] text-[2.2rem] text-arcade-yellow [text-shadow:0_0_14px_rgba(244,211,94,0.55)]'
                           : tier === 'r2'
-                            ? 'font-pixel-mono tracking-[0.04em] text-[1.7rem] text-arcade-text'
-                            : 'font-pixel-mono tracking-[0.04em] text-[1.35rem] text-arcade-text';
+                            ? 'font-pixel-mono tracking-[0.04em] text-[1.9rem] text-arcade-text'
+                            : 'font-pixel-mono tracking-[0.04em] text-[1.5rem] text-arcade-text';
 
                       const prizeNameCls =
                         tier === 'r1'
-                          ? 'font-pixel-kr tracking-[-0.01em] text-[1.4rem] text-pink'
+                          ? 'font-pixel-kr tracking-[-0.01em] text-[1.55rem] text-pink'
                           : tier === 'r2'
-                            ? 'font-pixel-kr tracking-[-0.01em] text-[1.35rem] text-pink'
-                            : 'font-pixel-kr tracking-[-0.01em] text-[1.16rem] text-pink';
+                            ? 'font-pixel-kr tracking-[-0.01em] text-[1.48rem] text-pink'
+                            : 'font-pixel-kr tracking-[-0.01em] text-[1.3rem] text-pink';
 
                       const prizeSubCls =
                         tier === 'r1'
-                          ? 'font-pixel-en text-[0.6rem] tracking-[0.18em] text-arcade-yellow [text-shadow:2px_2px_0_var(--color-blue-darker)]'
+                          ? 'font-pixel-en text-[0.7rem] tracking-[0.18em] text-arcade-yellow [text-shadow:2px_2px_0_var(--color-blue-darker)]'
                           : tier === 'r2'
-                            ? 'font-pixel-en text-[0.66rem] tracking-[0.08em] text-blue-sky [text-shadow:2px_2px_0_var(--color-blue-darker)]'
-                            : 'block font-pixel-en text-[0.6rem] tracking-[0.18em] text-[#c9824c] [text-shadow:2px_2px_0_#5a3425]';
+                            ? 'font-pixel-en text-[0.76rem] tracking-[0.08em] text-blue-sky [text-shadow:2px_2px_0_var(--color-blue-darker)]'
+                            : 'block font-pixel-en text-[0.7rem] tracking-[0.18em] text-[#c9824c] [text-shadow:2px_2px_0_#5a3425]';
 
                       return (
                         <div className={`${rowBase} ${rowTier}`} key={`${rank}-${winner.normalizedId}`}>
@@ -802,7 +647,7 @@ export default function App() {
                           <div className="flex items-center gap-3 min-w-0">
                             <span className={winnerCls}>{winner.maskedId}</span>
                             {rank === '1등' ? (
-                              <span className="px-2 py-[3px] bg-pink text-arcade-ink font-pixel-en text-[0.55rem] font-bold tracking-[0.08em] [box-shadow:0_0_0_2px_var(--color-arcade-bg),0_0_12px_var(--color-pink)] animate-blink-tag">
+                              <span className="px-2 py-[3px] bg-pink text-arcade-ink font-pixel-en text-[0.62rem] font-bold tracking-[0.08em] [box-shadow:0_0_0_2px_var(--color-arcade-bg),0_0_12px_var(--color-pink)] animate-blink-tag">
                                 NEW HI-SCORE
                               </span>
                             ) : null}
@@ -820,7 +665,7 @@ export default function App() {
 
               {/* footer */}
               <div className="flex items-center justify-between gap-4 pt-3.5 border-t-[3px] border-dashed border-pink">
-                <div className="flex items-center gap-2.5 text-blue-pale font-pixel-en text-[0.7rem] tracking-[0.15em]">
+                <div className="flex items-center gap-2.5 text-blue-pale font-pixel-en text-[0.78rem] tracking-[0.15em]">
                   <span>PLAYERS {drawResult.participantCount}</span>
                   <span className="text-pink">·</span>
                   <span>GENERATED {new Date(drawResult.generatedAt).toLocaleString('ko-KR')}</span>
@@ -830,25 +675,37 @@ export default function App() {
             </div>
           ) : null}
         </section>
-
           <footer className="statusbar">
             <div className="status-info">
               <span className="dot" />
               <span>PLAYERS {drawResult?.participantCount ?? validation.validCount}</span>
               <span>SHA-256</span>
               <span>v1.0.0</span>
-              <span className="blink" style={{ marginLeft: 'auto', color: 'var(--c-yellow)' }}>
-                ▶ PRESS BUTTON
-              </span>
             </div>
           </footer>
-          <div className="brick-strip" aria-hidden="true" />
         </section>
+          <div className="screen-glass" aria-hidden="true" />
       </div>
-      <ArcadeCabinetPanel
-        primary={primaryAction}
-        secondary={secondaryAction}
-        tertiary={tertiaryAction}
+      <button
+        type="button"
+        className="hotspot hotspot-start"
+        onClick={primaryAction.onClick}
+        disabled={primaryAction.disabled}
+        aria-label={primaryAction.label}
+      />
+      <button
+        type="button"
+        className="hotspot hotspot-full"
+        onClick={secondaryAction.onClick}
+        disabled={secondaryAction.disabled}
+        aria-label={secondaryAction.label}
+      />
+      <button
+        type="button"
+        className="hotspot hotspot-reset"
+        onClick={tertiaryAction.onClick}
+        disabled={tertiaryAction.disabled}
+        aria-label={tertiaryAction.label}
       />
     </div>
   </main>
