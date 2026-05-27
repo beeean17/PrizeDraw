@@ -8,7 +8,7 @@ import type {
   ValidationResult,
 } from '../types/raffle';
 
-export const STUDENT_ID_REGEX = /^\d{6,12}$/;
+export const STUDENT_ID_REGEX = /^\d{8}$/;
 
 export const DEFAULT_PRIZES: PrizeConfig[] = [
   { rank: '3등', name: '생협 아메리카노', count: 30, revealOrder: 1 },
@@ -31,11 +31,11 @@ export function validateStudentId(value: string): boolean {
 
 export function maskStudentId(id: string): string {
   if (id.length <= 2) return '*'.repeat(id.length);
-  if (id.length <= 6) {
+  if (id.length <= 4) {
     return `${id[0]}${'*'.repeat(id.length - 2)}${id[id.length - 1]}`;
   }
 
-  return `${id.slice(0, 4)}${'*'.repeat(Math.max(3, id.length - 7))}${id.slice(-3)}`;
+  return `${id.slice(0, 2)}${'*'.repeat(id.length - 4)}${id.slice(-2)}`;
 }
 
 export function reasonLabel(reason: InvalidReason): string {

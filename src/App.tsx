@@ -229,7 +229,7 @@ export default function App() {
   const [drawResult, setDrawResult] = useState<DrawResult | null>(null);
   const [activeRank, setActiveRank] = useState<Rank | null>(null);
   const [drawPhase, setDrawPhase] = useState<DrawPhase>('idle');
-  const [slotPreview, setSlotPreview] = useState('2026***000');
+  const [slotPreview, setSlotPreview] = useState('00****00');
   const [error, setError] = useState('');
   const [confettiActive, setConfettiActive] = useState(false);
 
@@ -242,7 +242,7 @@ export default function App() {
 
     const timer = window.setInterval(() => {
       const randomIndex = Math.floor(Math.random() * validation.participants.length);
-      setSlotPreview(validation.participants[randomIndex]?.maskedId ?? '2026***000');
+      setSlotPreview(validation.participants[randomIndex]?.maskedId ?? '00****00');
     }, 70);
 
     return () => window.clearInterval(timer);
