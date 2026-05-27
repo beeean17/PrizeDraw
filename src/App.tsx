@@ -15,6 +15,13 @@ import type { DrawResult, Rank, ValidationResult } from './types/raffle';
 
 type AppView = 'START' | 'INPUT' | 'READY' | 'DRAW' | 'RESULT';
 type DrawPhase = 'idle' | 'drawing' | 'revealed';
+type FullscreenDocument = Document & {
+  webkitFullscreenElement?: Element | null;
+  webkitExitFullscreen?: () => Promise<void> | void;
+};
+type FullscreenElement = HTMLElement & {
+  webkitRequestFullscreen?: () => Promise<void> | void;
+};
 
 const rankOrder: Rank[] = ['3등', '2등', '1등'];
 const startPrizeOrder: Rank[] = ['1등', '2등', '3등'];
@@ -39,6 +46,40 @@ function getStageLabel(view: AppView, activeRank: Rank | null): string {
   if (view === 'READY') return '목록 고정 완료';
   if (view === 'RESULT') return '최종 결과';
   return activeRank ? `${activeRank} 추첨` : '추첨 진행';
+}
+
+function getFullscreenElement(): Element | null {
+  const fullscreenDocument = document as FullscreenDocument;
+  return document.fullscreenElement ?? fullscreenDocument.webkitFullscreenElement ?? null;
+}
+
+async function requestAppFullscreen() {
+  const root = document.documentElement as FullscreenElement;
+
+  if (root.requestFullscreen) {
+    await root.requestFullscreen();
+    return;
+  }
+
+  if (root.webkitRequestFullscreen) {
+    await root.webkitRequestFullscreen();
+    return;
+  }
+
+  throw new Error('이 브라우저에서 전체화면을 지원하지 않습니다.');
+}
+
+async function exitAppFullscreen() {
+  const fullscreenDocument = document as FullscreenDocument;
+
+  if (document.exitFullscreen) {
+    await document.exitFullscreen();
+    return;
+  }
+
+  if (fullscreenDocument.webkitExitFullscreen) {
+    await fullscreenDocument.webkitExitFullscreen();
+  }
 }
 
 function Stat({ label, value, tone }: { label: string; value: string | number; tone?: string }) {
@@ -232,6 +273,7 @@ export default function App() {
   const [slotPreview, setSlotPreview] = useState('00****00');
   const [error, setError] = useState('');
   const [confettiActive, setConfettiActive] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   const validation = useMemo(() => parseParticipants(inputText), [inputText]);
   const canLock = validation.validCount >= totalPrizeCount;
@@ -247,6 +289,19 @@ export default function App() {
 
     return () => window.clearInterval(timer);
   }, [drawPhase, validation.participants]);
+
+  useEffect(() => {
+    const syncFullscreenState = () => setIsFullscreen(Boolean(getFullscreenElement()));
+
+    syncFullscreenState();
+    document.addEventListener('fullscreenchange', syncFullscreenState);
+    document.addEventListener('webkitfullscreenchange', syncFullscreenState);
+
+    return () => {
+      document.removeEventListener('fullscreenchange', syncFullscreenState);
+      document.removeEventListener('webkitfullscreenchange', syncFullscreenState);
+    };
+  }, []);
 
   async function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -305,12 +360,33 @@ export default function App() {
     setError('');
   }
 
-  async function toggleFullscreen() {
-    if (!document.fullscreenElement) {
-      await document.documentElement.requestFullscreen();
-    } else {
-      await document.exitFullscreen();
+  async function enterFullscreen() {
+    try {
+      setError('');
+      await requestAppFullscreen();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : '전체화면으로 전환할 수 없습니다.');
     }
+  }
+
+  async function exitFullscreen() {
+    try {
+      setError('');
+      if (getFullscreenElement()) {
+        await exitAppFullscreen();
+      }
+    } catch {
+      setError('전체화면을 종료할 수 없습니다. Esc 키로 다시 시도해 주세요.');
+    }
+  }
+
+  async function toggleFullscreen() {
+    if (getFullscreenElement()) {
+      await exitFullscreen();
+      return;
+    }
+
+    await enterFullscreen();
   }
 
   const nextRank = activeRank ? rankOrder[rankOrder.indexOf(activeRank) + 1] : null;
@@ -338,7 +414,7 @@ export default function App() {
   })();
 
   const secondaryAction: CabinetAction = {
-    label: 'INSERT COIN',
+    label: isFullscreen ? 'EXIT FULLSCREEN' : 'INSERT COIN',
     onClick: toggleFullscreen,
   };
 
@@ -516,7 +592,7 @@ export default function App() {
                     ▶ DRAW
                   </button>
                   <button type="button" onClick={toggleFullscreen}>
-                    ▣ FULLSCREEN
+                    ▣ {isFullscreen ? 'EXIT FULLSCREEN' : 'FULLSCREEN'}
                   </button>
                   <button type="button" onClick={resetAll}>
                     ◀ EDIT
@@ -707,6 +783,11 @@ export default function App() {
         disabled={tertiaryAction.disabled}
         aria-label={tertiaryAction.label}
       />
+      {isFullscreen ? (
+        <button type="button" className="fullscreen-exit" onClick={exitFullscreen} aria-label="전체화면 종료">
+          EXIT
+        </button>
+      ) : null}
     </div>
   </main>
   );
